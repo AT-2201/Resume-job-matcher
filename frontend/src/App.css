@@ -1,0 +1,299 @@
+/* ---------- Global ---------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, Arial;
+  color: #e5e7eb;
+
+  /* Modern SaaS background */
+  background:
+    radial-gradient(
+      1200px 600px at 50% -200px,
+      rgba(59, 130, 246, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      800px 500px at 90% 20%,
+      rgba(16, 185, 129, 0.08),
+      transparent 55%
+    ),
+    #0b0f14;
+}
+
+/* ---------- Page ---------- */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+/* ---------- Header ---------- */
+.header {
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 2.4rem;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.header p {
+  margin-top: 6px;
+  color: #9ca3af;
+}
+
+/* ---------- Layout ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Two-column layout after ranking */
+.mainLayout {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 22px;
+  align-items: start;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.95),
+    rgba(17, 24, 39, 0.85)
+  );
+  color: #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.card h2 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+/* ---------- Inputs ---------- */
+textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #374151;
+  padding: 12px;
+  background: #0b1220;
+  color: #e5e7eb;
+  resize: vertical;
+}
+
+input[type="file"] {
+  display: block;
+  margin: 10px 0;
+}
+
+/* ---------- Buttons ---------- */
+button {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  filter: brightness(1.12);
+}
+
+/* ---------- Muted text ---------- */
+.muted {
+  color: #9ca3af;
+}
+
+/* ---------- Side Panel ---------- */
+.sidePanel {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.4),
+    rgba(17, 24, 39, 0.2)
+  );
+  border-radius: 20px;
+  padding: 16px;
+}
+
+@media (max-width: 1000px) {
+  .mainLayout {
+    grid-template-columns: 1fr;
+  }
+  .sidePanel {
+    position: static;
+  }
+}
+
+/* ---------- Table ---------- */
+.tableWrap {
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid #374151;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.table th,
+.table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #374151;
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  background: #0b1220;
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Highlight top candidate */
+.topCandidate {
+  background: linear-gradient(
+    to right,
+    rgba(34, 197, 94, 0.08),
+    transparent
+  );
+}
+
+/* ---------- Score Circle ---------- */
+.scoreCircle {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.scoreCircle.high {
+  background: #064e3b;
+  color: #d1fae5;
+}
+
+.scoreCircle.mid {
+  background: #92400e;
+  color: #fffbeb;
+}
+
+.scoreCircle.low {
+  background: #7f1d1d;
+  color: #fee2e2;
+}
+
+.badgeLabel {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ---------- Why Box ---------- */
+.whyBox {
+  white-space: pre-wrap;
+  font-size: 13px;
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+/* ---------- Skills ---------- */
+.skillsGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.skillCategory {
+  font-weight: 700;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.skillChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 6px 10px;
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* ---------- Logs ---------- */
+.logItem {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #374151;
+  margin-top: 10px;
+  background: #0b1220;
+}
+
+.logItem.success {
+  border-color: #065f46;
+}
+
+.logItem.error {
+  border-color: #7f1d1d;
+}
+
+.logMsg {
+  font-weight: 600;
+}
+
+/* ---------- Spinner ---------- */
+.spinner {
+  margin: 12px 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: #0b1220;
+  border: 1px solid #374151;
+  color: #9ca3af;
+  text-align: center;
+  font-weight: 600;
+}

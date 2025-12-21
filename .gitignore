@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+.venv/
+.env
+
+# Node
+node_modules/
+dist/
+
+# Uploaded files
+uploads/
+resumes/
+*.pdf
+*.docx
+
+# OS
+.DS_Store

@@ -1,0 +1,22 @@
+{
+  "languages": [
+    "python", "java", "c++", "c", "r", "go", "javascript", "typescript", "sql"
+  ],
+  "ml_ai": [
+    "machine learning", "deep learning", "nlp", "computer vision",
+    "xgboost", "lightgbm", "scikit-learn", "pytorch", "tensorflow"
+  ],
+  "data": [
+    "data analysis", "data science", "data engineering",
+    "pandas", "numpy", "spark", "hadoop", "airflow"
+  ],
+  "databases": [
+    "postgresql", "mysql", "mongodb", "sqlite", "redis"
+  ],
+  "cloud_devops": [
+    "aws", "azure", "gcp", "docker", "kubernetes", "ci/cd"
+  ],
+  "frameworks": [
+    "fastapi", "django", "flask", "react", "node.js", "express"
+  ]
+}
