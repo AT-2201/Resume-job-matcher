@@ -2,9 +2,66 @@ import { useMemo, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-export default function App() {
-  const API_BASE = useMemo(() => "http://127.0.0.1:8000", []);
+const API_BASE = "http://127.0.0.1:8000";
 
+function formatCandidateName(candidateId = "") {
+  return candidateId.replace(/[-_]/g, " ").trim() || "Unnamed candidate";
+}
+
+function getScoreTone(score = 0) {
+  if (score >= 80) return "high";
+  if (score >= 60) return "mid";
+  return "low";
+}
+
+function getScoreLabel(score = 0) {
+  if (score >= 80) return "Strong fit";
+  if (score >= 60) return "Partial fit";
+  return "Needs review";
+}
+
+function getRankReasons(candidate = {}) {
+  const match = candidate.match_score ?? 0;
+  const coverage = candidate.skill_coverage ?? 0;
+
+  return [
+    match >= 75
+      ? "High semantic similarity"
+      : match >= 60
+        ? "Reasonable semantic similarity"
+        : "Lower semantic similarity",
+    coverage >= 80
+      ? "Covers most required skills"
+      : coverage >= 50
+        ? "Covers some required skills"
+        : "Limited required skill coverage",
+  ];
+}
+
+function StatCard({ label, value, detail }) {
+  return (
+    <div className="statCard">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
+function ProgressBar({ value = 0, tone = "mid" }) {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+
+  return (
+    <div className="progressTrack" aria-label={`${safeValue}%`}>
+      <div
+        className={`progressFill ${tone}`}
+        style={{ width: `${safeValue}%` }}
+      />
+    </div>
+  );
+}
+
+export default function App() {
   const [jobText, setJobText] = useState("");
   const [resumeFiles, setResumeFiles] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -12,9 +69,20 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState([]);
 
-  const pushLog = (obj) => setLog((prev) => [obj, ...prev]);
+  const selectedFileNames = useMemo(
+    () => resumeFiles.map((file) => file.name),
+    [resumeFiles],
+  );
 
-  /* -------------------- Upload resumes -------------------- */
+  const topCandidate = ranked?.ranked_candidates?.[0];
+  const jobSkillCount = ranked?.job_skill_requirements
+    ? Object.values(ranked.job_skill_requirements).flat().length
+    : 0;
+
+  const pushLog = (obj) => {
+    setLog((prev) => [{ time: new Date().toLocaleTimeString(), ...obj }, ...prev]);
+  };
+
   async function uploadSelectedResumes() {
     if (!resumeFiles.length) {
       pushLog({ type: "error", msg: "Select one or more resume files first." });
@@ -22,212 +90,295 @@ export default function App() {
     }
 
     setBusy(true);
+    setRanked(null);
+
     try {
       const uploaded = [];
+
       for (const file of resumeFiles) {
         const form = new FormData();
         form.append("file", file);
 
-        const res = await axios.post(`${API_BASE}/upload/resume`, form, {
+        const response = await axios.post(`${API_BASE}/upload/resume`, form, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
         uploaded.push({
           candidate_id: file.name.replace(/\.[^/.]+$/, ""),
-          resume_text: res.data.extracted_text || "",
+          resume_text: response.data.extracted_text || "",
         });
       }
 
       setCandidates(uploaded);
-      pushLog({ type: "success", msg: `Uploaded ${uploaded.length} resumes.` });
-    } catch (e) {
-      pushLog({ type: "error", msg: "Resume upload failed.", data: String(e) });
+      pushLog({ type: "success", msg: `Extracted ${uploaded.length} resumes.` });
+    } catch (error) {
+      pushLog({
+        type: "error",
+        msg: "Resume upload failed.",
+        data: error?.message || String(error),
+      });
     } finally {
       setBusy(false);
     }
   }
 
-  /* -------------------- Rank candidates -------------------- */
   async function rankCandidates() {
     if (!jobText.trim()) {
       pushLog({ type: "error", msg: "Paste a job description first." });
       return;
     }
+
     if (!candidates.length) {
-      pushLog({ type: "error", msg: "Upload resumes first." });
+      pushLog({ type: "error", msg: "Upload resumes before ranking." });
       return;
     }
 
     setBusy(true);
     setRanked(null);
+
     try {
       const payload = { job_text: jobText, resumes: candidates };
-      const res = await axios.post(`${API_BASE}/rank/candidates`, payload);
-      setRanked(res.data);
-      pushLog({ type: "success", msg: "Ranking complete." });
-    } catch (e) {
-      pushLog({ type: "error", msg: "Ranking failed.", data: String(e) });
+      const response = await axios.post(`${API_BASE}/rank/candidates`, payload);
+
+      setRanked(response.data);
+      pushLog({ type: "success", msg: "Candidate ranking complete." });
+    } catch (error) {
+      pushLog({
+        type: "error",
+        msg: "Ranking failed.",
+        data: error?.message || String(error),
+      });
     } finally {
       setBusy(false);
     }
   }
 
-  /* -------------------- UI helpers -------------------- */
-  function scoreLevel(score = 0) {
-    if (score >= 80) return "high";
-    if (score >= 60) return "mid";
-    return "low";
-  }
-
-  function scoreLabel(score = 0) {
-    if (score >= 80) return "Strong fit";
-    if (score >= 60) return "Partial fit";
-    return "Low overall match";
-  }
-
-  function whyThisRank(candidate = {}) {
-    const match = candidate.match_score ?? 0;
-    const coverage = candidate.skill_coverage ?? 0;
-
-    const reasons = [];
-    if (match >= 75) reasons.push("✔ High semantic similarity");
-    else if (match >= 60) reasons.push("✔ Reasonable semantic similarity");
-    else reasons.push("✖ Low semantic similarity");
-
-    if (coverage >= 80) reasons.push("✔ Covers most required skills");
-    else if (coverage >= 50) reasons.push("✔ Covers some required skills");
-    else reasons.push("✖ Limited skill coverage");
-
-    return reasons.join("\n");
-  }
-
-  /* -------------------- Render -------------------- */
   return (
-    <div className="page">
-      <header className="header">
-        <h1>Resume ↔ Job Matcher</h1>
-        <p className="muted">AI-powered resume screening & ranking</p>
-      </header>
-
-      <div className={ranked ? "mainLayout" : "grid"}>
-
-        {/* LEFT COLUMN — Steps 1 & 2 */}
+    <main className="page">
+      <section className="hero">
         <div>
-          {/* Step 1: Job Description */}
-          <section className="card">
-            <h2>1️⃣ Job Description</h2>
-            <textarea
-              value={jobText}
-              onChange={(e) => setJobText(e.target.value)}
-              placeholder="Paste the job description here…"
-              rows={8}
-            />
-          </section>
+          <p className="eyebrow">AI resume screening dashboard</p>
+          <h1>Rank resumes against a job description in minutes.</h1>
+          <p className="heroCopy">
+            Upload candidate resumes, compare them to role requirements, and
+            review ranked, explainable match results.
+          </p>
+        </div>
 
-          {/* Step 2: Upload Resumes */}
-          <section className="card">
-            <h2>2️⃣ Upload Resumes</h2>
+        <div className="heroPanel">
+          <StatCard
+            label="Candidates"
+            value={candidates.length}
+            detail={candidates.length ? "ready to rank" : "waiting for upload"}
+          />
+          <StatCard
+            label="Job text"
+            value={jobText.trim() ? `${jobText.trim().length}` : "0"}
+            detail="characters entered"
+          />
+          <StatCard
+            label="Top score"
+            value={topCandidate ? topCandidate.rank_score : "—"}
+            detail={topCandidate ? formatCandidateName(topCandidate.candidate_id) : "rank to calculate"}
+          />
+        </div>
+      </section>
 
+      <section className="workflow">
+        <div className="card">
+          <div className="cardHeader">
+            <div>
+              <span className="stepBadge">Step 1</span>
+              <h2>Job description</h2>
+            </div>
+            <span className="subtle">{jobText.trim().length} chars</span>
+          </div>
+
+          <textarea
+            value={jobText}
+            onChange={(event) => setJobText(event.target.value)}
+            placeholder="Paste the job description, required skills, responsibilities, and qualifications here…"
+            rows={10}
+          />
+        </div>
+
+        <div className="card">
+          <div className="cardHeader">
+            <div>
+              <span className="stepBadge">Step 2</span>
+              <h2>Candidate resumes</h2>
+            </div>
+            <span className="subtle">PDF, DOCX, TXT</span>
+          </div>
+
+          <label className="uploadBox">
             <input
               type="file"
               multiple
               accept=".pdf,.docx,.txt"
-              onChange={(e) => setResumeFiles(Array.from(e.target.files || []))}
+              onChange={(event) => {
+                setResumeFiles(Array.from(event.target.files || []));
+                setCandidates([]);
+                setRanked(null);
+              }}
             />
+            <strong>Choose resume files</strong>
+            <span>
+              {selectedFileNames.length
+                ? `${selectedFileNames.length} selected`
+                : "Drop in multiple candidate files"}
+            </span>
+          </label>
 
-            <button disabled={busy} onClick={uploadSelectedResumes}>
-              {busy ? "Working…" : "Upload & Extract Text"}
-            </button>
-
-            <div style={{ marginTop: 10 }}>
-              <div className="muted">Loaded candidates:</div>
-              {candidates.length === 0 ? (
-                <div className="muted">None yet</div>
-              ) : (
-                <ul>
-                  {candidates.map((c) => (
-                    <li key={c.candidate_id}>
-                      <b>{c.candidate_id}</b> — {c.resume_text.length} chars
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {selectedFileNames.length > 0 && (
+            <div className="fileList">
+              {selectedFileNames.map((name) => (
+                <span key={name}>{name}</span>
+              ))}
             </div>
+          )}
 
+          <div className="actionRow">
             <button
-              disabled={busy}
-              onClick={rankCandidates}
-              style={{ marginTop: 10 }}
+              className="secondaryButton"
+              disabled={busy || !resumeFiles.length}
+              onClick={uploadSelectedResumes}
             >
-              {busy ? "Ranking…" : "Rank Candidates"}
+              Extract Text
             </button>
-          </section>
+            <button
+              className="primaryButton"
+              disabled={busy || !jobText.trim() || !candidates.length}
+              onClick={rankCandidates}
+            >
+              Rank Candidates
+            </button>
+          </div>
+
+          {busy && <div className="spinner">Processing request…</div>}
+        </div>
+      </section>
+
+      <section className="dashboard">
+        <div className="resultsPanel">
+          <div className="sectionTitle">
+            <div>
+              <p className="eyebrow">Results</p>
+              <h2>Candidate ranking</h2>
+            </div>
+            {ranked && <span className="pill">{jobSkillCount} job skills found</span>}
+          </div>
+
+          {!ranked ? (
+            <div className="emptyState">
+              <div className="emptyIcon">📊</div>
+              <h3>No ranking yet</h3>
+              <p>
+                Add a job description, extract resumes, then rank candidates to
+                see match scores and explanations.
+              </p>
+            </div>
+          ) : (
+            <div className="candidateStack">
+              {ranked.ranked_candidates.map((candidate, index) => {
+                const tone = getScoreTone(candidate.rank_score);
+
+                return (
+                  <article
+                    key={candidate.candidate_id}
+                    className={`candidateCard ${index === 0 ? "topCandidate" : ""}`}
+                  >
+                    <div className="rankColumn">
+                      <span>#{index + 1}</span>
+                      <div className={`scoreCircle ${tone}`}>
+                        {candidate.rank_score}
+                      </div>
+                    </div>
+
+                    <div className="candidateContent">
+                      <div className="candidateHeader">
+                        <div>
+                          <h3>{formatCandidateName(candidate.candidate_id)}</h3>
+                          <span className={`fitBadge ${tone}`}>
+                            {getScoreLabel(candidate.rank_score)}
+                          </span>
+                        </div>
+                        {index === 0 && <span className="winnerBadge">Top match</span>}
+                      </div>
+
+                      <div className="scoreGrid">
+                        <div>
+                          <span>Semantic match</span>
+                          <strong>{candidate.match_score}</strong>
+                          <ProgressBar value={candidate.match_score} tone={tone} />
+                        </div>
+                        <div>
+                          <span>Skill coverage</span>
+                          <strong>{candidate.skill_coverage}%</strong>
+                          <ProgressBar value={candidate.skill_coverage} tone={tone} />
+                        </div>
+                      </div>
+
+                      <div className="reasonList">
+                        {getRankReasons(candidate).map((reason) => (
+                          <span key={reason}>{reason}</span>
+                        ))}
+                      </div>
+
+                      {candidate.matched_skills &&
+                        Object.values(candidate.matched_skills).flat().length > 0 && (
+                          <div className="skillsPreview">
+                            {Object.values(candidate.matched_skills)
+                              .flat()
+                              .slice(0, 8)
+                              .map((skill) => (
+                                <span key={skill}>{skill}</span>
+                              ))}
+                          </div>
+                        )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* RIGHT COLUMN — Appears AFTER ranking */}
-        {ranked && (
-          <div className="sidePanel">
-
-            {/* Ranked Candidates */}
-            <section className="card log">
-              <h2>📊 Ranked Candidates</h2>
-
-              <div className="tableWrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Candidate</th>
-                      <th>Score</th>
-                      <th>Match</th>
-                      <th>Coverage</th>
-                      <th>Why?</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ranked.ranked_candidates.map((c, i) => (
-                      <tr
-                        key={c.candidate_id}
-                        className={i === 0 ? "topCandidate" : ""}
-                      >
-                        <td>{i + 1}</td>
-                        <td><b>{c.candidate_id}</b></td>
-                        <td>
-                          <div className={`scoreCircle ${scoreLevel(c.rank_score)}`}>
-                            {c.rank_score}
-                          </div>
-                          <div className="badgeLabel">
-                            {scoreLabel(c.rank_score)}
-                          </div>
-                        </td>
-                        <td>{c.match_score}</td>
-                        <td>{c.skill_coverage}%</td>
-                        <td>
-                          <pre className="whyBox">{whyThisRank(c)}</pre>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Logs */}
-            <section className="card log">
-              <h2>🧾 Logs</h2>
-              {log.length === 0 ? (
-                <p className="muted">No actions yet.</p>
-              ) : (
-                log.map((item, idx) => (
-                  <div key={idx} className={`logItem ${item.type}`}>
-                    <div className="logMsg">{item.msg}</div>
-                  </div>
-                ))
-              )}
-            </section>
+        <aside className="activityPanel">
+          <div className="sectionTitle compact">
+            <div>
+              <p className="eyebrow">Activity</p>
+              <h2>Session log</h2>
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+
+          {candidates.length > 0 && (
+            <div className="loadedList">
+              <strong>Loaded candidates</strong>
+              {candidates.map((candidate) => (
+                <span key={candidate.candidate_id}>
+                  {formatCandidateName(candidate.candidate_id)}
+                  <small>{candidate.resume_text.length} chars</small>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {log.length === 0 ? (
+            <p className="muted">No actions yet.</p>
+          ) : (
+            <div className="logList">
+              {log.map((item, index) => (
+                <div key={`${item.time}-${index}`} className={`logItem ${item.type}`}>
+                  <span>{item.time}</span>
+                  <strong>{item.msg}</strong>
+                  {item.data && <small>{item.data}</small>}
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+      </section>
+    </main>
   );
 }
